@@ -1,0 +1,7 @@
+[Date "06.02.2025"]
+[White "gjxkjgkjgjkg"]
+[Black "jkjkkjcg"]
+[Result "1-0"]
+[Termination "gjxkjgkjgjkg wins by checkmate"]
+
+1. f3 e5 2. g4 Qh4
