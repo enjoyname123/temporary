@@ -223,4 +223,13 @@ def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_m
                 next_move = move
         if max_score > alpha:
             alpha = max_score
-       
+        if alpha >= beta:
+            break
+
+    return max_score
+
+def findRandomMove(valid_moves):
+    """
+    Picks and returns a random valid move.
+    """
+    return random.choice(valid_moves)
