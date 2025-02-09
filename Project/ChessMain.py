@@ -7,7 +7,7 @@ from multiprocessing import Process, Queue
 import tempfile
 
 # Constants
-BOARD_WIDTH = BOARD_HEIGHT = 512    
+BOARD_WIDTH = BOARD_HEIGHT = 512  # Keeping the original size but ensuring clarity
 MOVE_LOG_PANEL_WIDTH = 320
 MOVE_LOG_PANEL_HEIGHT = BOARD_HEIGHT
 DIMENSION = 8
@@ -21,7 +21,8 @@ def loadImages():
     """
     pieces = ['wp', 'wR', 'wN', 'wB', 'wK', 'wQ', 'bp', 'bR', 'bN', 'bB', 'bK', 'bQ']
     for piece in pieces:
-        IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQUARE_SIZE, SQUARE_SIZE))
+        # Load high-resolution images for clarity
+        IMAGES[piece] = p.transform.smoothscale(p.image.load(f"images/{piece}.png"), (SQUARE_SIZE, SQUARE_SIZE))
 
 def main():
     """
@@ -31,7 +32,7 @@ def main():
     icon = p.image.load('images/chess_icon.png')
     p.display.set_icon(icon)
     screen = p.display.set_mode((BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT))
-    p.display.set_caption("Chess Game!")  # Corrected line
+    p.display.set_caption("Chess Game!")
     clock = p.time.Clock()
     multiplayer_mode = chooseGameMode(screen)
     player_one = True
@@ -158,7 +159,7 @@ def chooseGameMode(screen):
     Display the game mode selection screen and return the selected mode.
     """
     background = p.image.load('images/background.jpg')
-    background = p.transform.scale(background, (BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT))
+    background = p.transform.smoothscale(background, (BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT))
     overlay = p.Surface((BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT), p.SRCALPHA)
     overlay.fill((0, 0, 139, 100))
     background.blit(overlay, (0, 0))
@@ -434,6 +435,7 @@ def drawMoveLog(screen, game_state, font):
         row_moves = move_texts[i:i + moves_per_row]
         row_text = "    ".join(f"{w} {b}" for w, b in row_moves)
         text_object = font.render(row_text, True, p.Color('#000000'))
+        screen.blit(text_object, (text_x, text_y))
         screen.blit(text_object, (text_x, text_y))
         text_y += text_object.get_height() + line_spacing
 
