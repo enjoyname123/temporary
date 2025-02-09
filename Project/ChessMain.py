@@ -4,10 +4,9 @@ import sys
 import os
 import datetime
 from multiprocessing import Process, Queue
-import tempfile
 
 # Constants
-BOARD_WIDTH = BOARD_HEIGHT = 512  # Keeping the original size but ensuring clarity
+BOARD_WIDTH = BOARD_HEIGHT = 512
 MOVE_LOG_PANEL_WIDTH = 320
 MOVE_LOG_PANEL_HEIGHT = BOARD_HEIGHT
 DIMENSION = 8
@@ -21,7 +20,6 @@ def loadImages():
     """
     pieces = ['wp', 'wR', 'wN', 'wB', 'wK', 'wQ', 'bp', 'bR', 'bN', 'bB', 'bK', 'bQ']
     for piece in pieces:
-        # Load high-resolution images for clarity
         IMAGES[piece] = p.transform.smoothscale(p.image.load(f"images/{piece}.png"), (SQUARE_SIZE, SQUARE_SIZE))
 
 def main():
@@ -73,7 +71,10 @@ def main():
                         move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
                         for i in range(len(valid_moves)):
                             if move == valid_moves[i]:
-                                game_state.makeMove(valid_moves[i])
+                                promotion_choice = None
+                                if move.is_pawn_promotion:
+                                    promotion_choice = pawnPromotion(screen, game_state.white_to_move)
+                                game_state.makeMove(valid_moves[i], promotion_choice)
                                 move_made = True
                                 animate = True
                                 square_selected = ()
@@ -398,21 +399,28 @@ def drawPieces(screen, board):
             if piece != "--":
                 screen.blit(IMAGES[piece], p.Rect(column * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
-class GameState:
+def pawnPromotion(screen, isWhite):
+    """
+    Handle pawn promotion by displaying a selection screen and returning the chosen piece.
+    """
+    promotion_pieces = ['Q', 'R', 'B', 'N']
+    color = 'w' if isWhite else 'b'
+    promotion_rects = []
+    for i, piece in enumerate(promotion_pieces):
+        rect = p.Rect((i * SQUARE_SIZE, 0), (SQUARE_SIZE, SQUARE_SIZE))
+        promotion_rects.append((rect, color + piece))
+        p.draw.rect(screen, p.Color("white"), rect)
+        screen.blit(IMAGES[color + piece], rect)
 
-    def getPGN(self):
-        """
-        Generate the PGN (Portable Game Notation) for the game.
-        """
-        pgn = []
-        for i in range(0, len(self.move_log), 2):
-            move_str = f"{i // 2 + 1}. {self.move_log[i].getChessNotation()}"
-            if i + 1 < len(self.move_log):
-                move_str += f" {self.move_log[i + 1].getChessNotation()}"
-            if self.checkmate:
-                move_str += "#"
-            pgn.append(move_str)
-        return " ".join(pgn)
+    p.display.flip()
+
+    while True:
+        for event in p.event.get():
+            if event.type == p.MOUSEBUTTONDOWN:
+                location = p.mouse.get_pos()
+                for rect, piece in promotion_rects:
+                    if rect.collidepoint(location):
+                        return piece
 
 def drawMoveLog(screen, game_state, font):
     """
@@ -435,7 +443,6 @@ def drawMoveLog(screen, game_state, font):
         row_moves = move_texts[i:i + moves_per_row]
         row_text = "    ".join(f"{w} {b}" for w, b in row_moves)
         text_object = font.render(row_text, True, p.Color('#000000'))
-        screen.blit(text_object, (text_x, text_y))
         screen.blit(text_object, (text_x, text_y))
         text_y += text_object.get_height() + line_spacing
 
