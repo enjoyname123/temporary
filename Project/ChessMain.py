@@ -49,6 +49,9 @@ def main():
     move_undone = False
     move_finder_process = None
     move_log_font = p.font.SysFont("Arial", 14, False, False)
+    dragging = False
+    drag_piece = None
+    drag_start_pos = (0, 0)
 
     while running:
         human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
@@ -61,12 +64,39 @@ def main():
                     location = p.mouse.get_pos()
                     col = location[0] // SQUARE_SIZE
                     row = location[1] // SQUARE_SIZE
-                    if square_selected == (row, col) or col >= 8:
-                        square_selected = ()
-                        player_clicks = []
+                    if col < 8:
+                        if game_state.board[row][col] != "--":
+                            square_selected = (row, col)
+                            player_clicks = [square_selected]
+                            drag_start_pos = location
+                            dragging = True
+                            drag_piece = game_state.board[row][col]
+                        else:
+                            player_clicks.append((row, col))
+                            if len(player_clicks) == 2:
+                                move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
+                                for i in range(len(valid_moves)):
+                                    if move == valid_moves[i]:
+                                        promotion_choice = None
+                                        if move.is_pawn_promotion:
+                                            promotion_choice = pawnPromotion(screen, game_state.white_to_move)
+                                        game_state.makeMove(valid_moves[i], promotion_choice)
+                                        move_made = True
+                                        animate = True
+                                        square_selected = ()
+                                        player_clicks = []
+                                if not move_made:
+                                    player_clicks = [square_selected]
                     else:
-                        square_selected = (row, col)
-                        player_clicks.append(square_selected)
+                        dragging = False
+                        player_clicks = []
+
+            elif e.type == p.MOUSEBUTTONUP:
+                if dragging:
+                    location = p.mouse.get_pos()
+                    col = location[0] // SQUARE_SIZE
+                    row = location[1] // SQUARE_SIZE
+                    player_clicks.append((row, col))
                     if len(player_clicks) == 2:
                         move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
                         for i in range(len(valid_moves)):
@@ -81,6 +111,12 @@ def main():
                                 player_clicks = []
                         if not move_made:
                             player_clicks = [square_selected]
+                    dragging = False
+                    drag_piece = None
+
+            elif e.type == p.MOUSEMOTION:
+                if dragging:
+                    drag_start_pos = p.mouse.get_pos()
 
             elif e.type == p.KEYDOWN:
                 if e.key in (p.K_z, p.K_u):
@@ -136,7 +172,7 @@ def main():
             animate = False
             move_undone = False
 
-        drawGameState(screen, game_state, valid_moves, square_selected)
+        drawGameState(screen, game_state, valid_moves, square_selected, dragging, drag_piece, drag_start_pos)
 
         if not game_over:
             drawMoveLog(screen, game_state, move_log_font)
@@ -348,13 +384,13 @@ def waitForInput():
                     input_text += event.unicode
         p.time.wait(100)
 
-def drawGameState(screen, game_state, valid_moves, square_selected):
+def drawGameState(screen, game_state, valid_moves, square_selected, dragging, drag_piece, drag_start_pos):
     """
     Draw the current game state on the screen.
     """
     drawBoard(screen)
     highlightSquares(screen, game_state, valid_moves, square_selected)
-    drawPieces(screen, game_state.board)
+    drawPieces(screen, game_state.board, drag_piece, drag_start_pos)
 
 def drawBoard(screen):
     """
@@ -389,15 +425,17 @@ def highlightSquares(screen, game_state, valid_moves, square_selected):
                 if move.start_row == row and move.start_col == col:
                     screen.blit(s, (move.end_col * SQUARE_SIZE, move.end_row * SQUARE_SIZE))
 
-def drawPieces(screen, board):
+def drawPieces(screen, board, drag_piece, drag_start_pos):
     """
     Draw the chess pieces on the board.
     """
     for row in range(DIMENSION):
         for column in range(DIMENSION):
             piece = board[row][column]
-            if piece != "--":
+            if piece != "--" and piece != drag_piece:
                 screen.blit(IMAGES[piece], p.Rect(column * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+    if drag_piece is not None:
+        screen.blit(IMAGES[drag_piece], p.Rect(drag_start_pos[0] - SQUARE_SIZE // 2, drag_start_pos[1] - SQUARE_SIZE // 2, SQUARE_SIZE, SQUARE_SIZE))
 
 def pawnPromotion(screen, isWhite):
     """
@@ -479,7 +517,7 @@ def animateMove(move, screen, board, clock):
     for frame in range(frame_count + 1):
         row, col = (move.start_row + d_row * frame / frame_count, move.start_col + d_col * frame / frame_count)
         drawBoard(screen)
-        drawPieces(screen, board)
+        drawPieces(screen, board, None, None)
         color = colors[(move.end_row + move.end_col) % 2]
         end_square = p.Rect(move.end_col * SQUARE_SIZE, move.end_row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
         p.draw.rect(screen, color, end_square)
